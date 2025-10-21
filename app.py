@@ -429,33 +429,83 @@ def get_item_name(sku: str) -> Optional[str]:
             return hit.iloc[0]["name"]
     return None
 
+# (确保 APP_DIR 和 IMAGES_DIR 已经在文件顶部定义好了)
+# APP_DIR = Path(__file__).parent.resolve()
+# IMAGES_DIR = APP_DIR / "images"
+
 def find_image_by_sku(sku: str) -> Optional[Path]:
-    # Prefer index CSV if it has image_path
+    # 优先从 index CSV 查找
     if image_index is not None and "image_path" in image_index.columns:
         hit = image_index.loc[image_index["sku"].str.upper() == sku]
         if not hit.empty:
-            p = Path(hit.iloc[0]["image_path"])
-            # allow relative paths
-            if not p.is_absolute():
-                p1 = (APP_DIR / p)
-                p2 = (IMAGES_DIR / p)
-                if p1.exists(): return p1
-                if p2.exists(): return p2
-            if p.exists():
-                return p
+            # 1. 从 CSV 获取原始路径字符串, e.g., "my_image.jpg" 或 "folder/my_image.jpg"
+            relative_path_from_csv = hit.iloc[0]["image_path"]
+            
+            # 关键修复：我们假设 CSV 中的路径 *总是* 相对的
+            # (即使它长得像 "C:\...", 我们也忽略它，只取最后的文件名部分)
+            # 
+            # Path() 可以智能处理 "C:\foo\bar.jpg" -> "C:", "foo", "bar.jpg"
+            # 我们只关心它相对于我们 APP_DIR 的位置。
+            #
+            # 为安全起见，我们只取文件名（如果CSV里是绝对路径）
+            # 或者保留相对路径
+            p_relative = Path(relative_path_from_csv)
+            
+            # 2. 尝试路径: APP_DIR / "images" / path_from_csv
+            #    (例如: /app/images/my_image.jpg)
+            p1 = IMAGES_DIR / p_relative.name  # .name 只取文件名，最安全
+            if p1.exists():
+                return p1
+                
+            # 3. 尝试路径: APP_DIR / path_from_csv
+            #    (这在CSV里存的是 "images/my_image.jpg" 时有用)
+            p2 = APP_DIR / p_relative
+            if p2.exists():
+                return p2
 
-    # Fallback: by convention in images/
+    # Fallback 1: 按约定在 images/ 目录中查找 (e.g., IMAGES_DIR / "SKU123.jpg")
+    # (你这部分的代码已经是正确的，因为它正确使用了 IMAGES_DIR)
     for ext in ("jpg", "jpeg", "png", "webp"):
         cand = IMAGES_DIR / f"{sku}.{ext}"
         if cand.exists():
             return cand
 
-    # Loose match
+    # Fallback 2: 宽松匹配
     for ext in ("jpg", "jpeg", "png", "webp"):
         globs = glob.glob(str(IMAGES_DIR / f"*{sku}*.{ext}"))
         if globs:
             return Path(globs[0])
+            
     return None
+
+
+# def find_image_by_sku(sku: str) -> Optional[Path]:
+#     # Prefer index CSV if it has image_path
+#     if image_index is not None and "image_path" in image_index.columns:
+#         hit = image_index.loc[image_index["sku"].str.upper() == sku]
+#         if not hit.empty:
+#             p = Path(hit.iloc[0]["image_path"])
+#             # allow relative paths
+#             if not p.is_absolute():
+#                 p1 = (APP_DIR / p)
+#                 p2 = (IMAGES_DIR / p)
+#                 if p1.exists(): return p1
+#                 if p2.exists(): return p2
+#             if p.exists():
+#                 return p
+
+#     # Fallback: by convention in images/
+#     for ext in ("jpg", "jpeg", "png", "webp"):
+#         cand = IMAGES_DIR / f"{sku}.{ext}"
+#         if cand.exists():
+#             return cand
+
+#     # Loose match
+#     for ext in ("jpg", "jpeg", "png", "webp"):
+#         globs = glob.glob(str(IMAGES_DIR / f"*{sku}*.{ext}"))
+#         if globs:
+#             return Path(globs[0])
+#     return None
 
 def load_image_safe(path: Path, max_size=(720, 720)) -> Optional[Image.Image]:
     try:
