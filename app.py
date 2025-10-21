@@ -265,7 +265,7 @@ APP_DIR = Path(__file__).parent.resolve()
 DATA_DIR = APP_DIR / "data"
 IMAGES_DIR = APP_DIR / "images"
 IMAGE_INDEX_CSV = DATA_DIR / "image_index.csv"   # optional: sku,[name],image_path
-SIMILAR_CSV = DATA_DIR / "similar_products.csv"
+# SIMILAR_CSV = DATA_DIR / "similar_products.csv"
 TOP_K = 10
 
 # We'll render 4 sections in this fixed order:
@@ -348,72 +348,72 @@ def load_image_fixed(path: Path, box=FIXED_IMG_SIZE, bg=(255, 255, 255)):
         return None
 
 
-@st.cache_data(show_spinner=False)
-def load_similar_df(path: Path) -> pd.DataFrame:
-    """Load similar_products.csv: item_sku, rec_sku, similarity_score"""
-    df = pd.read_csv(path)
-    df.columns = [c.strip().lower() for c in df.columns]
-    for c in df.columns:
-        df[c] = df[c].astype(str).str.strip()
-    if "similarity_score" in df.columns:
-        df["similarity_score_num"] = pd.to_numeric(df["similarity_score"], errors="coerce")
-    else:
-        df["similarity_score_num"] = pd.NA
-    return df
+# @st.cache_data(show_spinner=False)
+# def load_similar_df(path: Path) -> pd.DataFrame:
+#     """Load similar_products.csv: item_sku, rec_sku, similarity_score"""
+#     df = pd.read_csv(path)
+#     df.columns = [c.strip().lower() for c in df.columns]
+#     for c in df.columns:
+#         df[c] = df[c].astype(str).str.strip()
+#     if "similarity_score" in df.columns:
+#         df["similarity_score_num"] = pd.to_numeric(df["similarity_score"], errors="coerce")
+#     else:
+#         df["similarity_score_num"] = pd.NA
+#     return df
 
-def get_similar_for_item(df: pd.DataFrame, item_sku: str) -> pd.DataFrame:
-    """
-    Filter similar items for one item_sku.
-    Expect columns: item_sku, rec_sku, similarity_score_num
-    """
-    if not {"item_sku", "rec_sku"}.issubset(set(df.columns)):
-        st.warning("similar_products.csv must contain columns: item_sku, rec_sku, similarity_score.")
-        return pd.DataFrame(columns=["item_sku", "rec_sku", "similarity_score_num"])
+# def get_similar_for_item(df: pd.DataFrame, item_sku: str) -> pd.DataFrame:
+#     """
+#     Filter similar items for one item_sku.
+#     Expect columns: item_sku, rec_sku, similarity_score_num
+#     """
+#     if not {"item_sku", "rec_sku"}.issubset(set(df.columns)):
+#         st.warning("similar_products.csv must contain columns: item_sku, rec_sku, similarity_score.")
+#         return pd.DataFrame(columns=["item_sku", "rec_sku", "similarity_score_num"])
 
-    _df = df.copy()
-    _df["item_sku"] = _df["item_sku"].str.upper()
-    _df["rec_sku"] = _df["rec_sku"].str.upper()
+#     _df = df.copy()
+#     _df["item_sku"] = _df["item_sku"].str.upper()
+#     _df["rec_sku"] = _df["rec_sku"].str.upper()
 
-    sub = _df.loc[_df["item_sku"] == item_sku].copy()
-    if sub.empty:
-        return sub
+#     sub = _df.loc[_df["item_sku"] == item_sku].copy()
+#     if sub.empty:
+#         return sub
 
-    if "similarity_score_num" in sub.columns:
-        sub = sub.sort_values("similarity_score_num", ascending=False, na_position="last")
+#     if "similarity_score_num" in sub.columns:
+#         sub = sub.sort_values("similarity_score_num", ascending=False, na_position="last")
 
-    # 去重：同一 rec_sku 仅保留最高分
-    sub = sub.drop_duplicates(subset=["rec_sku"], keep="first")
+#     # 去重：同一 rec_sku 仅保留最高分
+#     sub = sub.drop_duplicates(subset=["rec_sku"], keep="first")
 
-    return sub
+#     return sub
 
-def render_grid_with_score(rows: pd.DataFrame):
-    cols_per_row = 5
-    items = rows.to_dict("records")
-    for i in range(0, len(items), cols_per_row):
-        chunk = items[i:i+cols_per_row]
-        cols = st.columns(len(chunk))
-        for c, r in zip(cols, chunk):
-            with c:
-                sku = r["rec_sku"]
-                score = r.get("similarity_score_num", None)
-                url = f"https://sep.snapon.com/product/{sku}"
+# def render_grid_with_score(rows: pd.DataFrame):
+#     cols_per_row = 5
+#     items = rows.to_dict("records")
+#     for i in range(0, len(items), cols_per_row):
+#         chunk = items[i:i+cols_per_row]
+#         cols = st.columns(len(chunk))
+#         for c, r in zip(cols, chunk):
+#             with c:
+#                 sku = r["rec_sku"]
+#                 score = r.get("similarity_score_num", None)
+#                 url = f"https://sep.snapon.com/product/{sku}"
 
-                # 统一生成“链接 + 分数”的文本（1 位小数）
-                score_txt = f" — score {float(score):.1f}" if pd.notna(score) else ""
-                link_line = f"[**{sku}**]({url}){score_txt}"
+#                 # 统一生成“链接 + 分数”的文本（1 位小数）
+#                 score_txt = f" — score {float(score):.1f}" if pd.notna(score) else ""
+#                 link_line = f"[**{sku}**]({url}){score_txt}"
 
-                p = find_image_by_sku(sku)
-                if p and p.exists():
-                    img = load_image_fixed(p)
-                    if img is not None:
-                        st.image(img, use_container_width=True)
-                        st.markdown(link_line)
-                    else:
-                        st.error(f"{sku}\n(Image corrupted)")
-                        st.markdown(link_line)
-                else:
-                    st.warning(f"{sku}\n(Image not found)")
-                    st.markdown(link_line)
+#                 p = find_image_by_sku(sku)
+#                 if p and p.exists():
+#                     img = load_image_fixed(p)
+#                     if img is not None:
+#                         st.image(img, use_container_width=True)
+#                         st.markdown(link_line)
+#                     else:
+#                         st.error(f"{sku}\n(Image corrupted)")
+#                         st.markdown(link_line)
+#                 else:
+#                     st.warning(f"{sku}\n(Image not found)")
+#                     st.markdown(link_line)
 
 
 def csv_path_for(logic_letter: str, pline_key: str) -> Path:
@@ -562,39 +562,39 @@ if query_sku:
     st.markdown("<div class='small-dim center-title'>Results limited to top 10 after filtering.</div>", unsafe_allow_html=True)
     st.markdown("<hr class='section-sep'/>", unsafe_allow_html=True)
 
-    # ===== NEW: Similar items generated by GNN (above Logic 1 — Same) =====
-    st.subheader("Similar Items Generated by Graph Neural Network")
-    st.caption(f"Source file: `{SIMILAR_CSV.name}`")
+    # # ===== NEW: Similar items generated by GNN (above Logic 1 — Same) =====
+    # st.subheader("Similar Items Generated by Graph Neural Network")
+    # st.caption(f"Source file: `{SIMILAR_CSV.name}`")
 
-    if not SIMILAR_CSV.exists():
-        st.warning("Data file not found. Please ensure 'data/similar_products.csv' exists.")
-    else:
-        with st.spinner("Loading data..."):
-            sdf = load_similar_df(SIMILAR_CSV)
-            srows = get_similar_for_item(sdf, query_sku)
+    # if not SIMILAR_CSV.exists():
+    #     st.warning("Data file not found. Please ensure 'data/similar_products.csv' exists.")
+    # else:
+    #     with st.spinner("Loading data..."):
+    #         sdf = load_similar_df(SIMILAR_CSV)
+    #         srows = get_similar_for_item(sdf, query_sku)
 
-        if srows.empty:
-            st.info("No similar items found for this SKU.")
-        else:
-            # 仅展示前 TOP_K 个（与你其他区块一致）
-            sshow = srows.head(TOP_K)
-            st.write(f"Showing {len(sshow)} item(s).")
-            render_grid_with_score(sshow[["rec_sku", "similarity_score_num"]])
+    #     if srows.empty:
+    #         st.info("No similar items found for this SKU.")
+    #     else:
+    #         # 仅展示前 TOP_K 个（与你其他区块一致）
+    #         sshow = srows.head(TOP_K)
+    #         st.write(f"Showing {len(sshow)} item(s).")
+    #         render_grid_with_score(sshow[["rec_sku", "similarity_score_num"]])
 
-            # 可选：下载按钮
-            out = sshow[["item_sku", "rec_sku", "similarity_score_num"]].rename(
-                columns={"similarity_score_num": "similarity_score"}
-            )
-            st.download_button(
-                "Download section CSV",
-                data=out.to_csv(index=False).encode("utf-8"),
-                file_name=f"gnn_similar_{query_sku}.csv",
-                mime="text/csv",
-                use_container_width=False
-            )
+    #         # 可选：下载按钮
+    #         out = sshow[["item_sku", "rec_sku", "similarity_score_num"]].rename(
+    #             columns={"similarity_score_num": "similarity_score"}
+    #         )
+    #         st.download_button(
+    #             "Download section CSV",
+    #             data=out.to_csv(index=False).encode("utf-8"),
+    #             file_name=f"gnn_similar_{query_sku}.csv",
+    #             mime="text/csv",
+    #             use_container_width=False
+    #         )
 
-    st.markdown("<hr class='section-sep'/>", unsafe_allow_html=True)
-    # ===== END NEW =====
+    # st.markdown("<hr class='section-sep'/>", unsafe_allow_html=True)
+    # # ===== END NEW =====
 
 
 
