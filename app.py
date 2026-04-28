@@ -19,9 +19,9 @@ TABLE_COMMENTS = "data_lab_test.recommender.RECOMMENDATION_ASSESSMENT_PLATFORM_C
 # Index 1: Logic 1 Same, Index 2: Logic 1 Different, Index 3: Logic 2 Same, Index 4: Logic 2 Different
 SECTIONS: List[Tuple[str, str]] = [
     ("1", "same"),
-    ("1", "different"),
+    ("1", "no limit"),
     ("2", "same"),
-    ("2", "different"),
+    ("2", "no limit"),
 ]
 NAME_TEMPLATE = "recs_{logic}_{pline}.csv"
 
@@ -140,7 +140,7 @@ if query_sku:
     for logic_val in ["1", "2"]:
         st.header(f"Logic {logic_val}")
         
-        for pline in ["same", "different"]:
+        for pline in ["same", "no-limit"]:
             csv_path = DATA_DIR / NAME_TEMPLATE.format(logic=logic_val, pline=pline)
             st.subheader(f"{pline.capitalize()} Product Line")
             
