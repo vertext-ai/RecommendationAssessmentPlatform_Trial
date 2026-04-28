@@ -140,7 +140,7 @@ if query_sku:
     for logic_val in ["1", "2"]:
         st.header(f"Logic {logic_val}")
         
-        for pline in ["same", "no-limit"]:
+        for pline in ["same", "different"]:
             csv_path = DATA_DIR / NAME_TEMPLATE.format(logic=logic_val, pline=pline)
             st.subheader(f"{pline.capitalize()} Product Line")
             
