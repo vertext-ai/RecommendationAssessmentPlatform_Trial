@@ -95,15 +95,14 @@ def get_imgix_url(sku: str) -> str:
     return f"https://snap-on-products-hr.imgix.net/{sku.strip()}.jpg?w=450&dpr=2&auto=format&fit=max&q=25"
 
 def render_grid(rows: pd.DataFrame):
-    """Renders images in a grid."""
-    cols_per_row = 5
+    """Renders images in a grid, always 5 columns per row."""
     items = rows.to_dict("records")
-    for i in range(0, len(items), cols_per_row):
-        chunk = items[i:i+cols_per_row]
-        cols = st.columns(len(chunk))
-        for c, r in zip(cols, chunk):
+    for i in range(0, len(items), 5):
+        chunk = items[i:i+5]
+        cols = st.columns(5)          # always exactly 5 columns
+        for j, r in enumerate(chunk):
             rec_sku = r["rec_sku"]
-            with c:
+            with cols[j]:
                 _, img_col, _ = st.columns([0.125, 0.75, 0.125])
                 with img_col:
                     st.image(get_imgix_url(rec_sku), use_container_width=True)
@@ -121,6 +120,18 @@ with st.form("search_form"):
 
 if submitted:
     st.session_state["current_sku"] = sku_input
+
+# Top-5 toggle — persists across reruns via session state
+if "show_top5" not in st.session_state:
+    st.session_state["show_top5"] = False
+
+btn_label = "✅ Showing Top 5  |  Click to Show All 10" if st.session_state["show_top5"] \
+            else "Show Top 5 / 10 Recommendations"
+if st.button(btn_label, use_container_width=True):
+    st.session_state["show_top5"] = not st.session_state["show_top5"]
+    st.rerun()
+
+display_k = 5 if st.session_state["show_top5"] else TOP_K
 
 query_sku = st.session_state.get("current_sku")
 
@@ -150,7 +161,7 @@ if query_sku:
                 section_idx += 1
                 continue
 
-            recs = df[df["item_sku"].str.upper() == query_sku.upper()].head(TOP_K)
+            recs = df[df["item_sku"].str.upper() == query_sku.upper()].head(display_k)
             
             if recs.empty:
                 st.warning(f"No results found in this section.")
