@@ -33,21 +33,9 @@ conn = st.connection("snowflake")
 # ================== 2. Styling (CSS) ==================
 st.markdown("""
 <style>
-div[data-testid="column"] > div:has(img) {
-  padding: 10px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.05);
-  background-color: white; text-align: center; margin-bottom: 10px;
-}
 hr.section-sep { border: none; border-top: 1px solid rgba(0,0,0,.1); margin: 2rem 0; }
 .center-title { text-align: center; margin-bottom: 1rem; }
 .stButton button { width: 100%; border-radius: 20px; }
-/* Container for section-level controls */
-.section-control-box {
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 5px solid #007bff;
-    margin-top: 10px;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,19 +83,31 @@ def get_imgix_url(sku: str) -> str:
     return f"https://snap-on-products-hr.imgix.net/{sku.strip()}.jpg?w=450&dpr=2&auto=format&fit=max&q=25"
 
 def render_grid(rows: pd.DataFrame):
-    """Renders images in a grid, always 5 columns per row."""
+    """Renders items 5-per-row; each image is forced to 4:3 aspect ratio."""
     items = rows.to_dict("records")
     for i in range(0, len(items), 5):
         chunk = items[i:i+5]
-        cols = st.columns(5)          # always exactly 5 columns
+        cols = st.columns(5)
         for j, r in enumerate(chunk):
             rec_sku = r["rec_sku"]
+            img_url = get_imgix_url(rec_sku)
+            product_url = f"https://sep.snapon.com/product/{rec_sku}"
             with cols[j]:
-                _, img_col, _ = st.columns([0.125, 0.75, 0.125])
-                with img_col:
-                    st.image(get_imgix_url(rec_sku), use_container_width=True)
-                url = f"https://sep.snapon.com/product/{rec_sku}"
-                st.markdown(f"**[{rec_sku}]({url})**")
+                st.markdown(
+                    f"""
+                    <div style="width:100%;aspect-ratio:4/3;overflow:hidden;
+                                display:flex;align-items:center;justify-content:center;
+                                background:#fff;border-radius:8px;
+                                box-shadow:0 2px 8px rgba(0,0,0,.07)">
+                      <img src="{img_url}"
+                           style="width:100%;height:100%;object-fit:contain" />
+                    </div>
+                    <div style="text-align:center;margin-top:5px;font-size:0.85rem">
+                      <a href="{product_url}" target="_blank"><b>{rec_sku}</b></a>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
 # ================== 4. Main UI Logic ==================
 
