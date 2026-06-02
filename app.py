@@ -1,5 +1,4 @@
 from __future__ import annotations
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -78,15 +77,19 @@ def save_comment(queried_sku: str, logic_index: int, comment_text: str):
     except Exception as e:
         st.error(f"Failed to save comment: {e}")
 
+DATA_DIR = "data"
+
 @st.cache_data(show_spinner=False)
-def load_recs_df(path: Path) -> pd.DataFrame:
-    if not path.exists():
+def load_recs_df(csv_name: str) -> pd.DataFrame:
+    path = f"{DATA_DIR}/{csv_name}"
+    try:
+        df = pd.read_csv(path)
+        df.columns = [c.strip().lower() for c in df.columns]
+        for c in df.columns:
+            df[c] = df[c].astype(str).str.strip()
+        return df
+    except FileNotFoundError:
         return pd.DataFrame()
-    df = pd.read_csv(path)
-    df.columns = [c.strip().lower() for c in df.columns]
-    for c in df.columns:
-        df[c] = df[c].astype(str).str.strip()
-    return df
 
 def get_imgix_url(sku: str) -> str:
     return f"https://snap-on-products-hr.imgix.net/{sku.strip()}.jpg?w=450&dpr=2&auto=format&fit=max&q=25"
@@ -123,7 +126,7 @@ def render_section(csv_name: str, logic_index: int, section_label: str,
     st.subheader(section_label)
     st.caption(description)
 
-    df = load_recs_df(Path(".") / csv_name)
+    df = load_recs_df(csv_name)
     if df.empty:
         st.info(f"No data found ({csv_name}).")
         return
